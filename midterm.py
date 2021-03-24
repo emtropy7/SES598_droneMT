@@ -78,7 +78,6 @@ class OffbPosCtl:
 
 #first attempt at making roundabout function
     def roundabout(self, x, y):
-
         N = 20
         r = 7
         dtheta = 2 * math.pi / N
@@ -90,7 +89,7 @@ class OffbPosCtl:
             theta += dtheta
             poly_x = r * math.cos(theta) + xc
             poly_y = r * math.sin(theta) + yc
-            circle.append([poly_x, poly_y, 10, self.rock_center])
+            circle.append([poly_x, poly_y, 10, 1])
             print("circle", poly_x, poly_y)
         self.waypointIndex = 0
         return numpy.array(circle,dtype=float)
