@@ -20,6 +20,7 @@ class OffbPosCtl:
     distThreshold = 1
     sim_ctr = 1
     in_round = False
+    round_size = 20
 
 
     def __init__(self):
@@ -47,37 +48,13 @@ class OffbPosCtl:
         rate.sleep()
         self.des_pose = self.copy_pose(self.curr_drone_pose)
         self.course = numpy.copy(self.locations)
+        self.course_size = self.course.shape[0]
 
         while not rospy.is_shutdown():
-            shape = self.locations.shape
-            n_rou = 2; #index to do rounadabout
-            #print(self.sim_ctr, shape[0], self.waypointIndex)
-        
-            if self.waypointIndex is shape[0] and not in_round: #in round, don't want zero because lower conditions
-                self.waypointIndex = 0
-                
-#                 # x = self.curr_drone_pose.pose.position.x
-#                 # y = self.curr_drone_pose.pose.position.y
-#                 # z = self.curr_drone_pose.pose.position.z
-#                 # self.locations = self.roundabout(x,y,z,self.waypointIndex)
-#                 self.sim_ctr += 1
-
-            if self.waypointIndex is n_rou:
-                x = self.curr_drone_pose.pose.position.x
-                y = self.curr_drone_pose.pose.position.y
-                z = self.curr_drone_pose.pose.position.z
-                self.locations = self.roundabout(x,y,z,n_rou)
-                print(self.locations,self.des_pose.pose)
-#             else: 
-            #if self.waypointIndex is n_rou+1:
-                #print(self.waypointIndex,"entered index 3 loop")
-#                 self.locations = self.course
-
-
-
+            n_rou = 1; #index to do rounadabout
 
             if self.isReadyToFly:
-                if self.waypointIndex == n_rou:
+                if in_round:
                     azimuth = math.atan2(self.rock_center[1] - self.curr_drone_pose.pose.position.y,
                                      self.rock_center[0] - self.curr_drone_pose.pose.position.x)
                 else: 
@@ -89,25 +66,33 @@ class OffbPosCtl:
                 dist = math.sqrt(
                     (curr.x - des.x) * (curr.x - des.x) + (curr.y - des.y) * (curr.y - des.y) + (curr.z - des.z) * (curr.z - des.z))
                 if dist < self.distThreshold:
-                    if in_round and self.waypointIndex == 19: #edit for length of circle array later
+                    if in_round and self.waypointIndex == self.round_size -1: #edit for length of circle array later
                         in_round = False
                         self.locations = self.course
-                        self.waypointIndex = n_rou
-                    self.waypointIndex += 1
+                        self.waypointIndex = n_rou+1
+                    elif not in_round and self.waypointIndex is self.course_size-1: 
+                        self.waypointIndex = 0
+                    elif not in_round and self.waypointIndex is n_rou:
+                        x = self.curr_drone_pose.pose.position.x
+                        y = self.curr_drone_pose.pose.position.y
+                        z = self.curr_drone_pose.pose.position.z
+                        self.locations = self.roundabout(x,y,z)
+                        print(self.locations,self.des_pose.pose)
+                    else: 
+                        self.waypointIndex += 1
 
             self.pose_pub.publish(self.des_pose)
             rate.sleep()
 
-    def roundabout(self, x, y, z, n_rou):
+    def roundabout(self, x, y, z):
         in_round = True
-        N = 20
         r = 3  # calculated 7 to be optimal radius
         dtheta = 2 * math.pi / N
         xc = x - r
         yc = y
         theta = 0
         circle = []
-        for n in range(N):
+        for n in range(self.round_size):
             theta += dtheta
             poly_x = r * math.cos(theta) + xc
             poly_y = r * math.sin(theta) + yc
