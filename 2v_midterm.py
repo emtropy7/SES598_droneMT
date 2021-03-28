@@ -19,6 +19,7 @@ class OffbPosCtl:
     waypointIndex = 0
     distThreshold = 1
     sim_ctr = 1
+    in_round = False
 
 
     def __init__(self):
@@ -51,14 +52,15 @@ class OffbPosCtl:
             shape = self.locations.shape
             n_rou = 2; #index to do rounadabout
             #print(self.sim_ctr, shape[0], self.waypointIndex)
-
-            if self.waypointIndex is shape[0]:
+        
+            if self.waypointIndex is shape[0] and not in_round: #in round, don't want zero because lower conditions
                 self.waypointIndex = 0
-                # x = self.curr_drone_pose.pose.position.x
-                # y = self.curr_drone_pose.pose.position.y
-                # z = self.curr_drone_pose.pose.position.z
-                # self.locations = self.roundabout(x,y,z,self.waypointIndex)
-                self.sim_ctr += 1
+                
+#                 # x = self.curr_drone_pose.pose.position.x
+#                 # y = self.curr_drone_pose.pose.position.y
+#                 # z = self.curr_drone_pose.pose.position.z
+#                 # self.locations = self.roundabout(x,y,z,self.waypointIndex)
+#                 self.sim_ctr += 1
 
             if self.waypointIndex is n_rou:
                 x = self.curr_drone_pose.pose.position.x
@@ -66,10 +68,10 @@ class OffbPosCtl:
                 z = self.curr_drone_pose.pose.position.z
                 self.locations = self.roundabout(x,y,z,n_rou)
                 print(self.locations,self.des_pose.pose)
-            else: 
+#             else: 
             #if self.waypointIndex is n_rou+1:
                 #print(self.waypointIndex,"entered index 3 loop")
-                self.locations = self.course
+#                 self.locations = self.course
 
 
 
@@ -87,12 +89,17 @@ class OffbPosCtl:
                 dist = math.sqrt(
                     (curr.x - des.x) * (curr.x - des.x) + (curr.y - des.y) * (curr.y - des.y) + (curr.z - des.z) * (curr.z - des.z))
                 if dist < self.distThreshold:
+                    if in_round and self.waypointIndex == 19: #edit for length of circle array later
+                        in_round = False
+                        self.locations = self.course
+                        self.waypointIndex = n_rou
                     self.waypointIndex += 1
 
             self.pose_pub.publish(self.des_pose)
             rate.sleep()
 
     def roundabout(self, x, y, z, n_rou):
+        in_round = True
         N = 20
         r = 3  # calculated 7 to be optimal radius
         dtheta = 2 * math.pi / N
@@ -107,7 +114,7 @@ class OffbPosCtl:
             poly_z = z - 2
             circle.append([poly_x, poly_y, poly_z, 1])
             # print("circle", poly_x, poly_y, poly_z)
-        self.waypointIndex = n_rou
+        self.waypointIndex = 0
         return numpy.array(circle, dtype=float)
 
     def set_desired_pose(self, _att_quat):
